@@ -23,15 +23,3 @@ class DPAgent():
 
     def policy_improvement():
         pass
-
-if __name__ == '__main__':
-    from MarkovDecisionProcess import MarkovDecisionProcess as MDP
-    import gym
-    env = gym.make('FrozenLake-v0')
-    env.reset()
-    mdp = MDP(env.observation_space.n, env.action_space.n, env.unwrapped.P)
-    agent = DPAgent(mdp)
-    num_iters = 10
-    for _ in range(num_iters):
-        agent.evaluate_policy()
-    print(agent.value_fn)
