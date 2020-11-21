@@ -4,7 +4,9 @@ class DPAgent():
         self.value_fn = [0] * self.mdp.num_states
         num_a = self.mdp.num_actions
         num_s = self.mdp.num_states
+        # random policy
         self.policy = [[1/num_a for a in range(num_a)] for s in range(num_s)]
+        self.discount_rate = discount_rate
 
     def evaluate_policy(self):
         for s in range(self.mdp.num_states):
