@@ -1,6 +1,10 @@
 import copy
 class DPAgent():
     def __init__(self, mdp, discount_rate=1):
+        """
+        Agent to solve worlds that are modelled using finite MDPs.
+        Note: rewards are assumed to be deterministic for any given state.
+        """
         self.mdp = mdp
         self.value_fn = [0] * self.mdp.num_states
         num_a = self.mdp.num_actions
@@ -10,6 +14,9 @@ class DPAgent():
         self.discount_rate = discount_rate
 
     def evaluate_policy(self):
+        """
+        Evaluate state values for all states.
+        """
         values = [0]*self.mdp.num_states
         for s in range(self.mdp.num_states):
             values[s] = self.evaluate_policy_for_state(s)
@@ -17,7 +24,10 @@ class DPAgent():
         self.value_fn = copy.deepcopy(values)
     
     def evaluate_policy_for_state(self, s):
-        assert s < self.mdp.num_states
+        """
+        Evaluates state value for s under self.policy
+        """
+        assert 0 <= s < self.mdp.num_states
         value_s = 0
         for a in range(self.mdp.num_actions):
             for transition in self.mdp.P[s][a]:
