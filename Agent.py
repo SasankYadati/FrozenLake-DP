@@ -1,0 +1,111 @@
+import copy
+import random
+import numpy as np
+class Agent():
+    def __init__(self, mdp, discount_rate=1.0):
+        """
+        Agent to solve worlds that are modelled using finite MDPs.
+        Note: rewards are assumed to be deterministic for any given state.
+        """
+        self.mdp = mdp
+        self.value_fn = [0] * self.mdp.num_states
+        num_a = self.mdp.num_actions
+        num_s = self.mdp.num_states
+        # random deterministic policy
+        self.policy = []
+        for s in range(num_s):
+            p_s = [0] * num_a
+            random_action = random.randint(0, num_a-1)
+            p_s[random_action] = 1
+            self.policy.append(p_s)
+        self.discount_rate = discount_rate
+
+    def get_action(self, s):
+        """
+        Using self.policy, return an action for state s.
+        Supports stochastic policies.
+        """
+        current_action_prob_dist = self.policy[s]
+        action = np.random.choice(list(range(self.mdp.num_actions)), 1, p=current_action_prob_dist)
+        return action[0]
+
+    def evaluate_policy(self):
+        """
+        Policy evaluation.
+        """
+        for s in range(self.mdp.num_states):
+            value_s = self.evaluate_policy_for_state(s)
+            self.value_fn[s] = round(value_s, 3)
+    
+    def evaluate_policy_for_state(self, s, action=None):
+        """
+        Iterative policy evaluation for state s.
+        Uses self.policy[s] if action is None, action otherwise.
+        """
+        assert 0 <= s < self.mdp.num_states
+        assert (action is None) or (0 <= action < self.mdp.num_actions)
+        value_s = 0
+        if action is None:
+            action = self.get_action(s)
+        for transition in self.mdp.P[s][action]:
+            # transition informs the next state, probability of it, reward and if state is terminal
+            pr_s_ = transition[0] # prob of next state s_ given s and action
+            s_ = transition[1] # value of next state s_ given s and action
+            r_s_ = transition[2] # reward of next state s_ given s and action
+            value_s += pr_s_ * (r_s_ + self.discount_rate * self.value_fn[s_])
+        return value_s
+
+    def improve_policy(self):
+        is_policy_stable = True
+        for s in range(self.mdp.num_states):
+            is_policy_stable = is_policy_stable and self.improve_policy_for_state(s)
+        return is_policy_stable
+        
+
+    def improve_policy_for_state(self, s):
+        assert 0 <= s < self.mdp.num_states
+        current_action = self.get_action(s)
+        
+        v_s_max = self.value_fn[current_action]
+        action_max = current_action
+        for action in range(self.mdp.num_actions):
+            v_s = self.evaluate_policy_for_state(s, action)
+            if v_s > v_s_max:
+                v_s_max = v_s
+                action_max = action
+        
+        self.policy[s] = [0]*self.mdp.num_actions
+        self.policy[s][action_max] = 1
+        return action_max == current_action
+
+    def policy_iteration(self, num_iters=1, debug=False):
+        for _ in range(num_iters):
+            self.evaluate_policy()
+            is_policy_stable = self.improve_policy()
+            if debug:
+                print("Value function: ", self.value_fn)
+                print("Policy: ", self.policy)
+            if is_policy_stable:
+                return
+
+    def print_agent_info(self):
+        for s in range(self.mdp.num_states):
+            a = self.get_action(s)
+            v = self.value_fn[s]
+            print(f"State {s}, policy(s): {a}, value(s): {v}")
+
+    def value_iteration():
+        pass
+
+if __name__ == '__main__':
+    from MarkovDecisionProcess import MarkovDecisionProcess as MDP
+    import gym
+    env = gym.make('FrozenLake-v0', is_slippery=False)
+    mdp = MDP(env.observation_space.n, env.action_space.n, env.unwrapped.P)
+    agent = Agent(mdp, 1.0)
+    agent.policy[0] = [1,0,0,0]
+    assert agent.get_action(0) == 0
+    agent.policy[14] = [0,0,1,0]
+    assert agent.get_action(14) == 2
+    agent.policy[2] = [0.5, 0.5, 0, 0]
+    assert agent.get_action(2) in [0,1]
