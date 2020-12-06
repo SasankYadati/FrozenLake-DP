@@ -39,8 +39,9 @@ class Agent():
     
     def evaluate_policy_for_state(self, s, action=None):
         """
-        Iterative policy evaluation for state s.
-        Uses self.policy[s] if action is None, action otherwise.
+        Policy evaluation for state s; action is optional.
+        If action is None, it estimates state value function, v(s)
+        If action is given, it estimates state-action value function q(s,a)
         """
         assert 0 <= s < self.mdp.num_states
         assert (action is None) or (0 <= action < self.mdp.num_actions)
@@ -69,7 +70,7 @@ class Agent():
         v_s_max = self.value_fn[current_action]
         action_max = current_action
         for action in range(self.mdp.num_actions):
-            v_s = self.evaluate_policy_for_state(s, action)
+            v_s = self.evaluate_policy_for_state(s, action) # instead of v(s) we calculate q(s,a)
             if v_s > v_s_max:
                 v_s_max = v_s
                 action_max = action
