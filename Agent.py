@@ -2,13 +2,14 @@ import copy
 import random
 import numpy as np
 class Agent():
-    def __init__(self, mdp, discount_rate=1.0):
+    def __init__(self, mdp, discount_rate=1.0, theta=0.05):
         """
         Agent to solve worlds that are modelled using finite MDPs.
         Note: rewards are assumed to be deterministic for any given state.
         """
         self.mdp = mdp
         self.value_fn = [0] * self.mdp.num_states
+        self.theta = theta
         num_a = self.mdp.num_actions
         num_s = self.mdp.num_states
         # random deterministic policy
@@ -31,17 +32,24 @@ class Agent():
 
     def evaluate_policy(self):
         """
-        Policy evaluation.
+        Policy evaluation for all states.
+        Uses self.theta to determine stopping distance.
+        This is not a pure function as it updates the value function for all states.
         """
-        for s in range(self.mdp.num_states):
-            value_s = self.evaluate_policy_for_state(s)
-            self.value_fn[s] = round(value_s, 3)
+        delta = self.theta + 1
+        while delta > self.theta:
+            delta = 0
+            for s in range(self.mdp.num_states):
+                value_s_old = self.value_fn[s]
+                self.value_fn[s] = self.evaluate_policy_for_state(s)
+                delta = max(delta, np.abs(value_s_old - self.value_fn[s]))
     
     def evaluate_policy_for_state(self, s, action=None):
         """
         Policy evaluation for state s; action is optional.
-        If action is None, it estimates state value function, v(s)
-        If action is given, it estimates state-action value function q(s,a)
+        If action is None, it estimates state value function, v(s).
+        If action is given, it estimates state-action value function q(s,a).
+        This is a pure function with respect to class members.
         """
         assert 0 <= s < self.mdp.num_states
         assert (action is None) or (0 <= action < self.mdp.num_actions)
@@ -54,49 +62,84 @@ class Agent():
             s_ = transition[1] # value of next state s_ given s and action
             r_s_ = transition[2] # reward of next state s_ given s and action
             value_s += pr_s_ * (r_s_ + self.discount_rate * self.value_fn[s_])
-        return value_s
+        return round(value_s, 4)
 
-    def improve_policy(self):
+    def improve_policy(self, debug=False):
+        """
+        Using the current value function, improve the existing policy.
+        Returns a boolean indicating whether the policy has changed.
+        This is not a pure function, as it modifies the member self.policy
+        """
         is_policy_stable = True
+        debug and print(self.policy)
         for s in range(self.mdp.num_states):
-            is_policy_stable = is_policy_stable and self.improve_policy_for_state(s)
+            current_action = self.get_action(s)
+            action_max = self.improve_policy_for_state(s)
+            debug and print(f"State {s}, Action {current_action}, New action {action_max}")
+            if action_max != current_action:
+                is_policy_stable = False
+                self.policy[s][current_action] = 0
+                self.policy[s][action_max] = 1
         return is_policy_stable
         
 
     def improve_policy_for_state(self, s):
+        """
+        Using the current value function, improves the existing policy at state s.
+        Returns a boolean indicating whether the policy has changed.
+        This is a pure function with respect to class members.
+        """
         assert 0 <= s < self.mdp.num_states
-        current_action = self.get_action(s)
         
-        v_s_max = self.value_fn[current_action]
-        action_max = current_action
+        v_s_max = min(self.value_fn) - 1
         for action in range(self.mdp.num_actions):
             v_s = self.evaluate_policy_for_state(s, action) # instead of v(s) we calculate q(s,a)
             if v_s > v_s_max:
                 v_s_max = v_s
                 action_max = action
-        
-        self.policy[s] = [0]*self.mdp.num_actions
-        self.policy[s][action_max] = 1
-        return action_max == current_action
+        return action_max
 
-    def policy_iteration(self, num_iters=1, debug=False):
-        for _ in range(num_iters):
+    def policy_iteration(self, debug=False):
+        """
+        Using policy evaluation and policy iteration as subroutines, 
+        Calculates optimal value function and optimal policy.
+        This is not a pure function.
+        """
+        
+        is_policy_stable = False
+        while (not is_policy_stable):
             self.evaluate_policy()
             is_policy_stable = self.improve_policy()
-            if debug:
-                print("Value function: ", self.value_fn)
-                print("Policy: ", self.policy)
-            if is_policy_stable:
-                return
+            debug and print(self.value_fn)
+            debug and print(self.policy)
+    
+    def value_iteration(self, debug=False):
+        """
+        Using policy evaluation for state and policy improvement as subroutines,
+        Calculates optimal value function first and extracts optimal policy from it.
+        This is not a pure function.
+        """
+        # find optimal value fn
+        delta = self.theta + 1
+        while delta > self.theta:
+            delta = 0
+            debug and print(self.value_fn)
+            for s in range(self.mdp.num_states):
+                value_s_old = self.value_fn[s]
+                for a in range(self.mdp.num_actions):
+                    v_s_a = self.evaluate_policy_for_state(s, a)
+                    self.value_fn[s] = max(v_s_a, self.value_fn[s])
+                delta = max(delta, np.abs(value_s_old - self.value_fn[s]))
+        # extract optimal policy
+        self.improve_policy(debug=debug)
+
+                
 
     def print_agent_info(self):
         for s in range(self.mdp.num_states):
             a = self.get_action(s)
             v = self.value_fn[s]
             print(f"State {s}, policy(s): {a}, value(s): {v}")
-
-    def value_iteration():
-        pass
 
 if __name__ == '__main__':
     from MarkovDecisionProcess import MarkovDecisionProcess as MDP
