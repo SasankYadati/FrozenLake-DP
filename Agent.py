@@ -62,7 +62,7 @@ class Agent():
             s_ = transition[1] # value of next state s_ given s and action
             r_s_ = transition[2] # reward of next state s_ given s and action
             value_s += pr_s_ * (r_s_ + self.discount_rate * self.value_fn[s_])
-        return round(value_s, 4)
+        return value_s
 
     def improve_policy(self, debug=False):
         """
@@ -85,15 +85,15 @@ class Agent():
 
     def improve_policy_for_state(self, s):
         """
-        Using the current value function, improves the existing policy at state s.
+        Using the current value function, returns an action that improves the existing policy at state s.
         Returns a boolean indicating whether the policy has changed.
         This is a pure function with respect to class members.
         """
         assert 0 <= s < self.mdp.num_states
         
-        v_s_max = min(self.value_fn) - 1
+        v_s_max = float("-inf")
         for action in range(self.mdp.num_actions):
-            v_s = self.evaluate_policy_for_state(s, action) # instead of v(s) we calculate q(s,a)
+            v_s = self.evaluate_policy_for_state(s, action) # calculate q(s,a)
             if v_s > v_s_max:
                 v_s_max = v_s
                 action_max = action
@@ -105,7 +105,6 @@ class Agent():
         Calculates optimal value function and optimal policy.
         This is not a pure function.
         """
-        
         is_policy_stable = False
         while (not is_policy_stable):
             self.evaluate_policy()
